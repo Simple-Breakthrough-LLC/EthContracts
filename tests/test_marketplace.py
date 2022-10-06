@@ -67,7 +67,7 @@ def test_buyFailing(alice, bob, marketplace, token):
 	marketplace.createMarketItem(token, 1, nftPriceLow, totalAmount, {"from": alice})
 
 	with reverts():
-		marketplace.createMarketSale(token, 2, totalAmount * 3, {"from":bob, "value": totalAmount * 3})
+		marketplace.createMarketSale(token, 1, totalAmount * 3, {"from":bob, "value": totalAmount * 3})
 	with reverts():
 		marketplace.createMarketSale(token, 2, totalAmount * 3, {"from":bob, "value": totalAmount })
 
