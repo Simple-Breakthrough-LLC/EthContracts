@@ -7,21 +7,16 @@ def isolation(fn_isolation):
     pass
 
 def test_listFailing(alice, marketplace, token):
-	# marketplace.createMarketItem(token, id, price, amount)
 	with reverts():
 		marketplace.createMarketItem(token, 1, 1, 0, {"from": alice})
 	with reverts():
 		marketplace.createMarketItem(token, 1, 1, 43,{"from": alice})
 	with reverts():
 		marketplace.createMarketItem(token, 1, 0, 1,{"from": alice})
+	with reverts():
+		marketplace.createMarketItem(token, 2, 1, 1,{"from": alice})
 	assert(marketplace.fetchMarketItems() == ())
 
-# buy more than available
-# buy 0
-# buy more than you can afford
-
-
-# Passing tests
 
 def test_listItems(alice, marketplace, token):
 		marketplace.createMarketItem(token, 1, 1, 1, {"from": alice})
@@ -70,6 +65,8 @@ def test_buyFailing(alice, bob, marketplace, token):
 		marketplace.createMarketSale(token, 1, totalAmount * 3, {"from":bob, "value": totalAmount * 3})
 	with reverts():
 		marketplace.createMarketSale(token, 2, totalAmount * 3, {"from":bob, "value": totalAmount })
+	with reverts():
+		marketplace.createMarketSale(token, 1, 0, {"from":bob, "value": 0 })
 
 
 
