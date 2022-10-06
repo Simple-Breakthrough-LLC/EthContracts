@@ -32,5 +32,7 @@ def token(deployer,marketplace, alice, bob):
 	tok.mint(alice, 1, 42, "")
 	tok.mint(bob, 2, 1, "")
 	tok.setApprovalForAll(marketplace, True, {"from":alice})
+	tok.setApprovalForAll(marketplace, True, {"from":bob})
+	# tok.setApprovalForAll(marketplace, True, {"from":carol})
 	return tok
 

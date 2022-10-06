@@ -29,39 +29,47 @@ def test_listItems(alice, marketplace, token):
 		marketplace.createMarketItem(token, 1, 1, 3, {"from": alice})
 		assert(token.balanceOf(alice, 1) == 38)
 
-# correct listing 1 / 1
-#  Check fetch items
+def test_buyItems(alice, bob, marketplace, token):
+	nftPrice = 1
+	amountBought = 3
+	totalAmount = 5
 
-# correct listing 1/ X
-#  Check fetch items
+	abalance = alice.balance()
+	bbalance = bob.balance()
 
-# correct listing X / X
-#  Check fetch items
+	marketplace.createMarketItem(token, 1, nftPrice, totalAmount, {"from": alice})
+	assert(token.balanceOf(marketplace, 1) == 5)
+	marketplace.createMarketSale(token, 1, amountBought, {"from":bob, "value": nftPrice * amountBought})
+	assert(bob.balance() == (bbalance - (nftPrice * amountBought)))
+	assert(token.balanceOf(bob, 1) == amountBought)
+	assert(alice.balance() == (abalance + (nftPrice * amountBought)))
 
-# buy 1
-# buy all
-# check fetch items
-# def test_buyItems(alice, bob, marketplace, token):
-# 	nftPrice = 1
-# 	amoutnBought = 3
-# 	totalAmount = 5
+def test_buyAllItems(alice, bob, marketplace, token):
+	nftPrice = 1
+	totalAmount = 5
+	amountBought = totalAmount
 
-# 	marketplace.createMarketItem(token, 1, nftPrice, totalAmount, {"from": alice})
+	marketplace.createMarketItem(token, 1, nftPrice, totalAmount, {"from": alice})
+	assert(token.balanceOf(marketplace, 1) == 5)
+	marketplace.createMarketSale(token, 1, amountBought, {"from":bob, "value": nftPrice * amountBought})
+	assert(token.balanceOf(marketplace, 1) == 0)
 
-# 	abalance = alice.balance
-# 	bbalance = bob.balance
-
-# 	marketplace.createMarketSale(token, 1, amoutnBought, {"from":bob})
-# 	assert(marketplace.fetchMarketItems() == ())
-# 	assert(token.balanceOf(bob, 1) == 2)
-# 	assert(alice.balance() == (abalance + (nftPrice * amoutnBought)) )
-# 	assert(bob.balance() == (bbalance - (nftPrice * amoutnBought)) )
-
-
-
+	with reverts():
+		marketplace.createMarketSale(token, 1, 1, {"from":bob, "value": nftPrice})
+	assert(marketplace.fetchMarketItems() == ())
 
 
+def test_buyFailing(alice, bob, marketplace, token):
+	nftPriceLow = 1
+	totalAmount = 5
+	amountBought = totalAmount
 
+	marketplace.createMarketItem(token, 1, nftPriceLow, totalAmount, {"from": alice})
+
+	with reverts():
+		marketplace.createMarketSale(token, 2, totalAmount * 3, {"from":bob, "value": totalAmount * 3})
+	with reverts():
+		marketplace.createMarketSale(token, 2, totalAmount * 3, {"from":bob, "value": totalAmount })
 
 
 

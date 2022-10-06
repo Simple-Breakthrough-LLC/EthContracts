@@ -111,9 +111,9 @@ contract marketPlaceBoilerPlate is Context, ReentrancyGuard, IERC1155Receiver {
             uint256 remainingTokens = idToMarketItem[itemId].amount;
             // bool sold = idToMarketItem[itemId].sold;
 
+            require(remainingTokens != 0, "This Sale has alredy finnished");
             require((amountBought > 0) && (amountBought <= remainingTokens), "Incorrect token amount");
             require(msg.value == (amountBought * price ), "Please submit the asking price in order to complete the purchase");
-            require(remainingTokens == 0, "This Sale has alredy finnished");
 
             emit MarketItemSold(
                 itemId
@@ -121,7 +121,7 @@ contract marketPlaceBoilerPlate is Context, ReentrancyGuard, IERC1155Receiver {
 
             idToMarketItem[itemId].seller.transfer(msg.value);
 
-			IERC1155(nftContract).safeTransferFrom(_msgSender(), address(this), tokenId, amountBought, "");
+			IERC1155(nftContract).safeTransferFrom(address(this), _msgSender(), tokenId, amountBought, "");
             _itemsSold.increment();
             idToMarketItem[itemId].amount -= amountBought;
         }
