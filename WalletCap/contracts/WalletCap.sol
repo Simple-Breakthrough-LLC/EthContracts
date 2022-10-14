@@ -51,8 +51,8 @@ contract BurnableLimitedNFT is
     ERC721Burnable,
     Ownable
 {
-	address[5] private payoutAddress;
-	uint256[5] private payoutPercent;
+	address[] private payoutAddress;
+	uint256[] private payoutPercent;
 
     uint256 public immutable MAX_SUPPLY;
 
@@ -60,7 +60,7 @@ contract BurnableLimitedNFT is
     uint256 public currentPrice;
     uint256 public walletLimit;
 
-	ERC20 private USDC_TOKEN;
+	IERC20 private USDC_TOKEN;
 
     bool public saleIsActive = true;
     bool public whitelistIsActive = false;
@@ -83,13 +83,15 @@ contract BurnableLimitedNFT is
         string memory _uri,
         uint256 limit,
         uint256 price,
-        uint256 maxSupply
+        uint256 maxSupply,
+		address e20
     ) payable ERC721(_name, _symbol) {
         _baseURIextended = _uri;
         walletLimit = limit;
         currentPrice = price;
         MAX_SUPPLY = maxSupply;
-		USDC_TOKEN = ERC20(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);//TEST USDC
+		// USDC_TOKEN = IERC20(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);//TEST USDC
+		USDC_TOKEN = IERC20(e20);//TEST USDC
     }
 
     /**
@@ -112,7 +114,7 @@ contract BurnableLimitedNFT is
         require(amount + minted <= walletLimit, "Exceeds wallet limit");
 
         require(
-            currentPrice * amount > USDC_TOKEN.balanceOf(msg.sender),
+            currentPrice * amount <= USDC_TOKEN.balanceOf(msg.sender),
             "Balance insufficient to complete purchase"
         );
 		USDC_TOKEN.transferFrom(msg.sender, address(this), currentPrice * amount);
@@ -134,34 +136,34 @@ contract BurnableLimitedNFT is
         }
     }
 
-	function setPayout(address[5] calldata addresses, uint256[5] calldata percents ) external onlyOwner {
+	function setPayout(address[] calldata addresses, uint256[] calldata percents ) external onlyOwner {
 		uint256 totalPercent;
 
+		payoutAddress = addresses;
+		payoutPercent = percents;
+		require(addresses.length <= 5 && percents.length == addresses.length, "Invalid payout data");
 		for (uint256 i = 0; i < addresses.length; i++) {
-			require(payoutAddress[i] != address(0x0), "Payout address cannot be 0x0");
+			require(payoutAddress[i] != address(0), "Payout address cannot be 0x0");
 			totalPercent += percents[i];
-			require(percents[i] >= 0 && percents[i] <= 100, "Invalid share amount. Cannot be negative or higher than 100");
-            payoutAddress[i] = addresses[i];
+			payoutAddress[i] = addresses[i];
 			payoutPercent[i] = percents[i];
-        }
+		}
 		require(totalPercent == 100, "Invalid share amount. Shares must add up to 100");
 	}
-    /**
-     * @dev A way for the owner to withdraw all proceeds from the sale.
-     */
+	/**
+	* @dev A way for the owner to withdraw all proceeds from the sale.
+	*/
     function withdraw() external onlyOwner {
 		uint256 balance = USDC_TOKEN.balanceOf((address(this)));
 
 		for (uint256 i = 0; i < payoutAddress.length; i++) {
-			if (payoutPercent[i] == 0)
-				continue ;
 			USDC_TOKEN.transferFrom (
 				address(this),
 				payable(payoutAddress[i]),
 				(balance * payoutPercent[i]) / 100
 			);
-        }
-    }
+		}
+	}
 
     /**
      * @dev Updates the baseURI that will be used to retrieve NFT metadata.
