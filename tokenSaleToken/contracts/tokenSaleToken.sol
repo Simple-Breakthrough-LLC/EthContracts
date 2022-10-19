@@ -3,7 +3,8 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+// import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./ERC20Interface.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
@@ -16,7 +17,7 @@ contract TokenSaleToken is
 	uint256 private _guard;
 
 	uint256 public price;
-	uint256 public remainingSaleTokens;
+	uint256 public remainingSaleSupply;
 	uint256 public totalSupply;
 	address public paymentToken;
 	address public saleToken;
@@ -24,11 +25,11 @@ contract TokenSaleToken is
 	constructor (
 		address _paymentToken,
 		address _saleToken,
-		uint256 _maxSupply
+		uint256 saleSupply
 	) {
 		paymentToken = _paymentToken;
 		saleToken = _saleToken;
-		maxSupply = _maxSupply;
+		remainingSaleSupply = saleSupply;
 		totalSupply = 0;
 		_guard = 1;
 	}
@@ -54,22 +55,39 @@ contract TokenSaleToken is
 		saleToken = token;
 	}
 
-	function pauseContract() external onlyOwner {
+	function setSaleSupply (uint256 amount) external onlyOwner {
+		remainingSaleSupply = amount;
+	}
+
+	function pause() external onlyOwner {
 		_pause();
 	}
 
-	function unpauseContract() external onlyOwner {
+	function unpause() external onlyOwner {
 		_unpause();
 	}
 
-	function Buy (uint256 amount) whenNotPaused nonReentrant external {
-		IERC20 payment = IERC20(paymentToken);
-		IERC20 sale = IERC20(saleToken);
+	function buy (uint256 amount) whenNotPaused nonReentrant external {
+		ERC20 payment = ERC20(paymentToken);
+		ERC20 sale = ERC20(saleToken);
 
-		require (payment.balanceOf(msg.sender) >= amount * price, "Insufficient funds");
+		require(remainingSaleSupply >= amount, "Not enough tokens remaining");
+		require(payment.balanceOf(msg.sender) >= amount * price, "Insufficient funds");
+
 
 		payment.transferFrom(msg.sender, address(this), amount * price);
 		sale.mint(msg.sender, amount);
 
+		totalSupply += amount;
+		remainingSaleSupply -= amount;
 	}
+
+    function withdraw() external onlyOwner {
+		ERC20 payment = ERC20(paymentToken);
+
+		payment.transfer(msg.sender, payment.balanceOf(address(this)));
+
+		remainingSaleSupply = 0;
+    }
+
 }
