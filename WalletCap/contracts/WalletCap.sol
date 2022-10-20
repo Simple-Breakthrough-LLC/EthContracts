@@ -1,22 +1,3 @@
-/*
-```_____````````````_````_`````````````````_``````````````_````````````
-``/`____|``````````|`|``|`|```````````````|`|````````````|`|```````````
-`|`|`````___```___`|`|`_|`|__```___```___`|`|`__```````__|`|`_____```__
-`|`|````/`_`\`/`_`\|`|/`/`'_`\`/`_`\`/`_`\|`|/`/``````/`_``|/`_`\`\`/`/
-`|`|___|`(_)`|`(_)`|```<|`|_)`|`(_)`|`(_)`|```<```_``|`(_|`|``__/\`V`/`
-``\_____\___/`\___/|_|\_\_.__/`\___/`\___/|_|\_\`(_)``\__,_|\___|`\_/``
-```````````````````````````````````````````````````````````````````````
-```````````````````````````````````````````````````````````````````````
-*/
-
-// -> Cookbook is a free smart contract marketplace. Find, deploy and contribute audited smart contracts.
-// -> Follow Cookbook on Twitter: https://twitter.com/cookbook_dev
-// -> Join Cookbook on Discord: https://discord.gg/9TwGrYbQCD
-
-// -> Find this contract on Cookbook: https://www.cookbook.dev/contracts/nft-sale-with-burnable-nfts-and-wallet-cap?utm=code
-
-
-
 // SPDX-License-Identifier: UNLICENSED
 
 pragma solidity ^0.8.0;
@@ -51,8 +32,10 @@ contract BurnableLimitedNFT is
     ERC721Burnable,
     Ownable
 {
-	address[] private payoutAddress;
-	uint256[] private payoutPercent;
+    IERC20 private USDC_TOKEN;
+    address[] private payoutAddress;
+    uint256[] private payoutPercent;
+    string private _baseURIextended;
 
     uint256 public immutable MAX_SUPPLY;
 
@@ -60,12 +43,8 @@ contract BurnableLimitedNFT is
     uint256 public currentPrice;
     uint256 public walletLimit;
 
-	IERC20 private USDC_TOKEN;
-
     bool public saleIsActive = true;
     bool public whitelistIsActive = false;
-
-    string private _baseURIextended;
 
     mapping(address => bool) public whitelist;
 
@@ -84,14 +63,14 @@ contract BurnableLimitedNFT is
         uint256 limit,
         uint256 price,
         uint256 maxSupply,
-		address e20
+        address e20
     ) payable ERC721(_name, _symbol) {
         _baseURIextended = _uri;
         walletLimit = limit;
         currentPrice = price;
         MAX_SUPPLY = maxSupply;
-		// USDC_TOKEN = IERC20(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);//TEST USDC
-		USDC_TOKEN = IERC20(e20);//TEST USDC
+        // USDC_TOKEN = IERC20(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);//TEST USDC
+        USDC_TOKEN = IERC20(e20); //TEST USDC
     }
 
     /**
@@ -117,7 +96,11 @@ contract BurnableLimitedNFT is
             currentPrice * amount <= USDC_TOKEN.balanceOf(msg.sender),
             "Balance insufficient to complete purchase"
         );
-		USDC_TOKEN.transferFrom(msg.sender, address(this), currentPrice * amount);
+        USDC_TOKEN.transferFrom(
+            msg.sender,
+            address(this),
+            currentPrice * amount
+        );
         for (uint256 i = 0; i < amount; i++) {
             _safeMint(msg.sender, ts + i);
         }
@@ -136,34 +119,47 @@ contract BurnableLimitedNFT is
         }
     }
 
-	function setPayout(address[] calldata addresses, uint256[] calldata percents ) external onlyOwner {
-		uint256 totalPercent;
+    function setPayout(
+        address[] calldata addresses,
+        uint256[] calldata percents
+    ) external onlyOwner {
+        uint256 totalPercent;
 
-		payoutAddress = addresses;
-		payoutPercent = percents;
-		require(addresses.length <= 5 && percents.length == addresses.length, "Invalid payout data");
-		for (uint256 i = 0; i < addresses.length; i++) {
-			require(payoutAddress[i] != address(0), "Payout address cannot be 0x0");
-			totalPercent += percents[i];
-			payoutAddress[i] = addresses[i];
-			payoutPercent[i] = percents[i];
-		}
-		require(totalPercent == 100, "Invalid share amount. Shares must add up to 100");
-	}
-	/**
-	* @dev A way for the owner to withdraw all proceeds from the sale.
-	*/
+        payoutAddress = addresses;
+        payoutPercent = percents;
+        require(
+            addresses.length <= 5 && percents.length == addresses.length,
+            "Invalid payout data"
+        );
+        for (uint256 i = 0; i < addresses.length; i++) {
+            require(
+                payoutAddress[i] != address(0),
+                "Payout address cannot be 0x0"
+            );
+            totalPercent += percents[i];
+            payoutAddress[i] = addresses[i];
+            payoutPercent[i] = percents[i];
+        }
+        require(
+            totalPercent == 100,
+            "Invalid share amount. Shares must add up to 100"
+        );
+    }
+
+    /**
+     * @dev A way for the owner to withdraw all proceeds from the sale.
+     */
     function withdraw() external onlyOwner {
-		uint256 balance = USDC_TOKEN.balanceOf((address(this)));
+        uint256 balance = USDC_TOKEN.balanceOf((address(this)));
 
-		for (uint256 i = 0; i < payoutAddress.length; i++) {
-			USDC_TOKEN.transferFrom (
-				address(this),
-				payable(payoutAddress[i]),
-				(balance * payoutPercent[i]) / 100
-			);
-		}
-	}
+        for (uint256 i = 0; i < payoutAddress.length; i++) {
+            USDC_TOKEN.transferFrom(
+                address(this),
+                payable(payoutAddress[i]),
+                (balance * payoutPercent[i]) / 100
+            );
+        }
+    }
 
     /**
      * @dev Updates the baseURI that will be used to retrieve NFT metadata.
@@ -254,4 +250,3 @@ contract BurnableLimitedNFT is
         return super.supportsInterface(interfaceId);
     }
 }
-
