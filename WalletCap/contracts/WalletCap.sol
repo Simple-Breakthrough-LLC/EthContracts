@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 
 /**
- * @title NFT Sale with burnable NFTs and wallet cap
+ * @title NFT Sale with burnable NFTs, wallet cap and  distributed payout
  * @author Breakthrough Labs Inc.
  * @notice NFT, Sale, ERC721, Limited, Whitelist, Burnable
  * @custom:version 1.0.3
@@ -23,10 +23,11 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
  *  - Reserve function for the owner to mint free NFTs.
  *  - Fixed maximum supply.
  *  - Methods that allow users to burn their NFTs. This directly decreases total supply.
+ *  - Proceeds can be divided across 5 wallets
  *
  */
 
-contract BurnableLimitedNFT is
+contract DistributedRoyaltiesNFTDrop is
     ERC721,
     ERC721Enumerable,
     ERC721Burnable,
@@ -80,7 +81,7 @@ contract BurnableLimitedNFT is
      * not be exceeded, and that a sufficient payable value is sent.
      * @param amount The number of NFTs to mint.
      */
-    function mint(uint256 amount) external payable {
+    function mint(uint256 amount) external {
         uint256 ts = totalSupply();
         uint256 minted = balanceOf(msg.sender);
 
@@ -118,6 +119,12 @@ contract BurnableLimitedNFT is
             _safeMint(msg.sender, supply + i);
         }
     }
+
+	 /**
+	  * @dev  A way for the owner to set how the proceeds are divided when withdrawn
+	  * @param addresses the addresses to transfer the proceeds to
+	  * @param percents the shares each address get
+	  */
 
     function setPayout(
         address[] calldata addresses,

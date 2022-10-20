@@ -1,5 +1,5 @@
 import pytest
-from brownie import BurnableLimitedNFT, GenericERC20, accounts
+from brownie import DistributedRoyaltiesNFTDrop, GenericERC20, accounts
 
 
 @pytest.fixture(scope="module")
