@@ -26,7 +26,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
  *
  */
 
-contract DistributedRoyaltiesNFTDrop is
+contract DistributedRoyaltiesNFTDropETH is
     ERC721,
     ERC721Enumerable,
     ERC721Burnable,
@@ -76,7 +76,7 @@ contract DistributedRoyaltiesNFTDrop is
      * not be exceeded, and that a sufficient payable value is sent.
      * @param amount The number of NFTs to mint.
      */
-    function mint(uint256 amount) payable external {
+    function mint(uint256 amount) public payable {
         uint256 ts = totalSupply();
         uint256 minted = balanceOf(msg.sender);
 
@@ -92,7 +92,7 @@ contract DistributedRoyaltiesNFTDrop is
             currentPrice * amount == msg.value,
             "Balance insufficient to complete purchase"
         );
-        payable(msg.sender).transfer(currentPrice * amount);
+
         for (uint256 i = 0; i < amount; i++) {
             _safeMint(msg.sender, ts + i);
         }
