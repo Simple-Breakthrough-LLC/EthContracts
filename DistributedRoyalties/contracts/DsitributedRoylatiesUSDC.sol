@@ -33,7 +33,7 @@ contract DistributedRoyaltiesNFTDrop is
     ERC721Burnable,
     Ownable
 {
-    IERC20 private USDC_TOKEN;
+    IERC20 private PAY_TOKEN;
     address[] private payoutAddress;
     uint256[] private payoutPercent;
     string private _baseURIextended;
@@ -56,6 +56,7 @@ contract DistributedRoyaltiesNFTDrop is
      * @param limit Wallet Limit
      * @param price Initial Price | precision:18
      * @param maxSupply Maximum # of NFTs
+     * @param e20 ERC20 to be used as payment method
      */
     constructor(
         string memory _name,
@@ -70,8 +71,7 @@ contract DistributedRoyaltiesNFTDrop is
         walletLimit = limit;
         currentPrice = price;
         MAX_SUPPLY = maxSupply;
-        // USDC_TOKEN = IERC20(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);//TEST USDC
-        USDC_TOKEN = IERC20(e20); //TEST USDC
+        PAY_TOKEN = IERC20(e20);
     }
 
     /**
@@ -94,10 +94,10 @@ contract DistributedRoyaltiesNFTDrop is
         require(amount + minted <= walletLimit, "Exceeds wallet limit");
 
         require(
-            currentPrice * amount <= USDC_TOKEN.balanceOf(msg.sender),
+            currentPrice * amount <= PAY_TOKEN.balanceOf(msg.sender),
             "Balance insufficient to complete purchase"
         );
-        USDC_TOKEN.transferFrom(
+        PAY_TOKEN.transferFrom(
             msg.sender,
             address(this),
             currentPrice * amount
@@ -157,10 +157,10 @@ contract DistributedRoyaltiesNFTDrop is
      * @dev A way for the owner to withdraw all proceeds from the sale.
      */
     function withdraw() external onlyOwner {
-        uint256 balance = USDC_TOKEN.balanceOf((address(this)));
+        uint256 balance = PAY_TOKEN.balanceOf((address(this)));
 
         for (uint256 i = 0; i < payoutAddress.length; i++) {
-            USDC_TOKEN.transferFrom(
+            PAY_TOKEN.transferFrom(
                 address(this),
                 payable(payoutAddress[i]),
                 (balance * payoutPercent[i]) / 100
