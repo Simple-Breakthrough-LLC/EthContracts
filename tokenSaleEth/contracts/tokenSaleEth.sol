@@ -74,9 +74,9 @@ contract TokenSaleToken is
 	}
 
     function withdraw() payable external onlyOwner {
+		address payable receiver = payable(owner());
 
-		msg.sender.transfer(address(this).balance);
-
+		receiver.transfer(address(this).balance);
 		remainingSaleSupply = 0;
     }
 
