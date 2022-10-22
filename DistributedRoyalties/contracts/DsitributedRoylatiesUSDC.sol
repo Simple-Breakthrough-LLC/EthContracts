@@ -80,13 +80,15 @@ contract DistributedRoyaltiesNFTDrop is
      * the minted NFTs will not exceed the `MAX_SUPPLY`, that the user's `walletLimit` will
      * not be exceeded, and that a sufficient payable value is sent.
      * @param amount The number of NFTs to mint.
+     * Recipient needs to approve this contract to spend their tokens on their behalf. 
+     * This contract is built with the Crossmint specification
      */
-    function mint(uint256 amount) external {
+    function mint(uint256 amount, address recipient) external {
         uint256 ts = totalSupply();
-        uint256 minted = balanceOf(msg.sender);
+        uint256 minted = balanceOf(recipient);
 
         require(
-            !whitelistIsActive || whitelist[msg.sender],
+            !whitelistIsActive || (whitelist[msg.sender] && whitelist[recipient]),
             "Address must be whitelisted."
         );
         require(saleIsActive, "Sale must be active to mint tokens");
@@ -94,16 +96,16 @@ contract DistributedRoyaltiesNFTDrop is
         require(amount + minted <= walletLimit, "Exceeds wallet limit");
 
         require(
-            currentPrice * amount <= PAY_TOKEN.balanceOf(msg.sender),
+            currentPrice * amount <= PAY_TOKEN.balanceOf(recipient),
             "Balance insufficient to complete purchase"
         );
         PAY_TOKEN.transferFrom(
-            msg.sender,
+            recipient,
             address(this),
             currentPrice * amount
         );
         for (uint256 i = 0; i < amount; i++) {
-            _safeMint(msg.sender, ts + i);
+            _safeMint(recipient, ts + i);
         }
     }
 
