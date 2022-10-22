@@ -76,12 +76,12 @@ contract DistributedRoyaltiesNFTDropETH is
      * not be exceeded, and that a sufficient payable value is sent.
      * @param amount The number of NFTs to mint.
      */
-    function mint(uint256 amount) public payable {
+    function mint(uint256 amount, address recipient) public payable {
         uint256 ts = totalSupply();
-        uint256 minted = balanceOf(msg.sender);
+        uint256 minted = balanceOf(recipient);
 
         require(
-            !whitelistIsActive || whitelist[msg.sender],
+            !whitelistIsActive || (whitelist[msg.sender] && whitelist[recipient]),
             "Address must be whitelisted."
         );
         require(saleIsActive, "Sale must be active to mint tokens");
@@ -94,7 +94,7 @@ contract DistributedRoyaltiesNFTDropETH is
         );
 
         for (uint256 i = 0; i < amount; i++) {
-            _safeMint(msg.sender, ts + i);
+            _safeMint(recipient, ts + i);
         }
     }
 
