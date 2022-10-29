@@ -19,6 +19,7 @@ Both ERC1155 and ERC721
  - Escrow : contract or holding wallet? Can be set or not ?
  - Marketplace fee for every transaction or only for buyer / seller ? Where does that fee go? Stored in contract or wallet?
  - Delay start auction ?
+ - Cancel auction ?
 
 ## Simple Sale
 	User puts NFT for sale at a price.
