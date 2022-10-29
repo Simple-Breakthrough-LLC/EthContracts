@@ -17,7 +17,7 @@ Both ERC1155 and ERC721
  - For 1155 sale, allow multiple to be put up for sale ? If so, price set per NFT or for all ? How would that work with auction ? Passive offers ?
  - How are we storing the sale info ? Will a database keep track of auctions (if so may not need hash)
  - Escrow : contract or holding wallet? Can be set or not ?
- - Marketplace fee for every transaction or only for buyer / seller ?
+ - Marketplace fee for every transaction or only for buyer / seller ? Where does that fee go? Stored in contract or wallet?
  - Delay start auction ?
 
 ## Simple Sale
