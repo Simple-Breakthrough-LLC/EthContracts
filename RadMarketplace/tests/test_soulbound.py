@@ -48,5 +48,5 @@ def isolation(fn_isolation):
 # FAIL 		Accept inexistant offer
 # FAIL 		Reject inexistant offer
 
-
-
+### Safety tests ?
+# Don't know about those, research ?
