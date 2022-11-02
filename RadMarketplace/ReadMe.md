@@ -26,8 +26,7 @@ OR
 	id,  contract, owner, data
  }
 
- Mapping : key depending on what they need to search for when looking for a sale
-	- sale id, generated when sale is created (integer)
+ Mapping : seuqntially, by sale id. backend will take care of the rest
 
  order : fill DS corresponding to order type (cimple, passive, auction) -> get key (hash) or id -> return order id, or hash
 			- either require isgnature from wallet / contract
