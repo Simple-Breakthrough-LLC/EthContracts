@@ -11,6 +11,10 @@ def isolation(fn_isolation):
 # SUCCESS	Put NFT for sale(alice & bob)
 # 		Check user balance
 # 		Check receiver balance
+
+def setAra(marketplace, nft):
+	marketplace.setARA(nft.address)
+
 def test_sale(marketplace, nft721, alice):
     token_id = 1
     price = 5
@@ -42,8 +46,10 @@ def test_buy_token(marketplace, nft721, alice, bob):
     token_id = 1
     price = 5
     assert bob.balance() >= price
+
+    setAra(marketplace, nft721)
     s = marketplace.createSimpleOffer(nft721, token_id, price, {"from": alice})
-    marketplace.buySimpleOffer(s.return_value)
+    marketplace.buySimpleOffer(s.return_value, {"from": bob, "value": price})
 
 
 # FAIL		Remove bought NFT from sale

@@ -59,9 +59,9 @@ OR
 
 ### Write
 
-- [ ] Token for sale
-- [ ] Buy token from sale
-- [ ] Remove token from sale
+- [X] Token for sale
+- [X] Buy token from sale
+- [X] Remove token from sale
 
 ### View
 Token price

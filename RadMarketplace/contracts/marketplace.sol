@@ -59,6 +59,10 @@ contract MarketPlace is Ownable, IERC721Receiver {
 		waiver = _waiver;
 	}
 
+	function getSimpleSale(uint256 saleId) external view returns (uint256) {
+		return _sales[saleId].price;
+	}
+
 	function onERC721Received(address,address,uint256,bytes calldata) external pure returns (bytes4) {
 		return IERC721Receiver.onERC721Received.selector;
 	}
@@ -91,7 +95,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
 
 	function buySimpleOffer (uint256 saleId) external payable{
 
-		require(_sales[saleId].contractAddress == address(0x0), "This sale does not exist or has ended");
+		require(_sales[saleId].contractAddress != address(0x0), "This sale does not exist or has ended");
 		require(msg.value == _sales[saleId].price, "Insufficient funds");
 
 		// Transfer money to seller, need to see whats up with market fee
