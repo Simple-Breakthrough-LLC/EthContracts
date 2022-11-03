@@ -104,4 +104,8 @@ contract MarketPlace is Ownable {
 		delete _sales[saleId];
 	}
 
+	function createAuction (address nftContract, uint256 nftId, uint256 price, uint256 startTime, uint256 duration) external {
+
+	}
+
 }
