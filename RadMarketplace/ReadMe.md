@@ -76,9 +76,8 @@ Keep highest bidder
 
 ### Write
 
-- [ ] New auction (reserve price, ID, contract, start, duration)
-- [ ] Bid
-- [ ] Set remaining time
+- [x] New auction (reserve price, ID, contract, start, duration)
+- [x] Bid
 
 ### View
 	Reserve price
@@ -96,7 +95,7 @@ User sets price for an NFT they want. $$ to escrow. Owner can accept or reject o
 
 ### Write
 
-- [ ] New offer (id, contract, price)
+- [x] New offer (id, contract, price)
 
 ### View
 	price
