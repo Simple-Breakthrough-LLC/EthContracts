@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 
-contract MarketPlace is Ownable {
+contract MarketPlace is Ownable, IERC721Receiver {
 
 	struct sale {
 		address contractAddress;
@@ -58,6 +59,9 @@ contract MarketPlace is Ownable {
 		waiver = _waiver;
 	}
 
+	function onERC721Received(address,address,uint256,bytes calldata) external pure returns (bytes4) {
+		return IERC721Receiver.onERC721Received.selector;
+	}
 
 	function createSimpleOffer(address nftContract, uint256 nftId, uint256 price) external returns (uint256) {
 
