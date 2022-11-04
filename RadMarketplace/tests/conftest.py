@@ -21,8 +21,9 @@ def bob():
 def carol():
     return accounts[3]
 
+
 @pytest.fixture(scope="module", autouse=True)
-def nft721(deployer, alice, bob, marketplace):
+def nft_contract(deployer, alice, bob, marketplace):
     contract = deployer.deploy(GenericERC721)
     contract.mint(alice, 1)
     contract.mint(bob, 2)
@@ -30,6 +31,7 @@ def nft721(deployer, alice, bob, marketplace):
     contract.setApprovalForAll(marketplace, True, {"from": alice})
     contract.setApprovalForAll(marketplace, True, {"from": bob})
     return contract
+
 
 @pytest.fixture(scope="module", autouse=True)
 def marketplace(deployer):

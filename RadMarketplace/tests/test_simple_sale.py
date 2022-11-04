@@ -7,123 +7,145 @@ def isolation(fn_isolation):
     pass
 
 
+def setAra(marketplace, nft):
+    marketplace.setARA(nft.address)
+
+
 ##		 Simple Sale
 # SUCCESS	Put NFT for sale(alice & bob)
 # 		Check user balance
 # 		Check receiver balance
-
-def setAra(marketplace, nft):
-	marketplace.setARA(nft.address)
-
-def test_sale(marketplace, nft721, alice):
-    token_id = 1
+def test_sale(marketplace, nft_contract, alice):
+    nft_id = 1
     price = 5
 
-    assert nft721.ownerOf(token_id) == alice.address
+    assert nft_contract.ownerOf(nft_id) == alice.address
 
-    marketplace.createSimpleOffer(nft721, token_id, price, {"from": alice})
+    marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
 
-    assert nft721.ownerOf(token_id) != alice.address
-    assert nft721.ownerOf(token_id) == marketplace.address
+    assert nft_contract.ownerOf(nft_id) != alice.address
+    assert nft_contract.ownerOf(nft_id) == marketplace.address
 
 
 # FAIl		NFT you don't own for sale
 # 		Check user balance
-def test_invalid_sale(marketplace, nft721, alice):
-    token_id = 2
+def test_invalid_sale(marketplace, nft_contract, alice):
+    nft_id = 2
     price = 5
 
-    assert nft721.ownerOf(token_id) != alice.address
+    assert nft_contract.ownerOf(nft_id) != alice.address
     with reverts("ERC721: transfer of token that is not own"):
-        marketplace.createSimpleOffer(nft721, token_id, price, {"from": alice})
-    assert nft721.ownerOf(token_id) != marketplace.address
+        marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
+    assert nft_contract.ownerOf(nft_id) != marketplace.address
 
 
 # SUCCESS	Buy token
 # 		Check buyer balance
 # 		Check seller balance
-def test_buy_token(marketplace, nft721, alice, bob):
-    token_id = 1
+def test_buy_token(marketplace, nft_contract, alice, bob):
+    nft_id = 1
     price = 5
-    bobBalance = bob.balance()
-    assert bobBalance >= price
+    alice_balance = alice.balance()
+    bob_balance = bob.balance()
+    assert bob_balance >= price
 
-    setAra(marketplace, nft721)
-    s = marketplace.createSimpleOffer(nft721, token_id, price, {"from": alice})
-    marketplace.buySimpleOffer(s.return_value, {"from": bob, "value": price})
+    setAra(marketplace, nft_contract)
+    sale = marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
+    marketplace.buySimpleOffer(sale.return_value, {"from": bob, "value": price})
 
-    assert bob.balance() == bobBalance - price
-    assert nft721.ownerOf(token_id) == bob.address
+    assert bob.balance() == bob_balance - price
+    assert alice.balance() == alice_balance + price
+    assert nft_contract.ownerOf(nft_id) == bob.address
+
+
+def test_invalid_buy_token(marketplace, nft_contract, alice, bob):
+    nft_id = 1
+    price = 5
+    invalid_sale_id = 123
+    bob_balance = bob.balance()
+    alice_balance = alice.balance()
+    assert bob_balance >= price
+
+    setAra(marketplace, nft_contract)
+    marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
+    with reverts("This sale does not exist or has ended"):
+        marketplace.buySimpleOffer(invalid_sale_id, {"from": bob, "value": price})
+
+    assert bob.balance() == bob_balance
+    assert alice.balance() == alice_balance
+    assert nft_contract.ownerOf(nft_id) != bob.address
+    assert nft_contract.ownerOf(nft_id) == marketplace.address
+
+
+def test_invalid_value_buy(marketplace, nft_contract, alice, bob):
+    nft_id = 1
+    price = 5
+    bob_balance = bob.balance()
+    alice_balance = alice.balance()
+    assert bob_balance >= price
+
+    setAra(marketplace, nft_contract)
+    sale = marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
+    with reverts("Insufficient funds"):
+        marketplace.buySimpleOffer(sale.return_value, {"from": bob, "value": price - 1})
+
+    assert bob.balance() == bob_balance
+    assert alice.balance() == alice_balance
+    assert nft_contract.ownerOf(nft_id) != bob.address
+    assert nft_contract.ownerOf(nft_id) == marketplace.address
 
 
 # FAIL		Remove bought NFT from sale
 # 		Check seller NFT balance
-def test_remove_offer(marketplace, nft721, alice):
-    token_id = 1
+def test_remove_offer(marketplace, nft_contract, alice):
+    nft_id = 1
     price = 1
 
-    sale = marketplace.createSimpleOffer(nft721, token_id, price, {"from": alice})
+    sale = marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
     marketplace.removeSimpleOffer(sale.return_value, {"from": alice})
 
-    assert nft721.ownerOf(token_id) == alice.address
-    assert nft721.ownerOf(token_id) != marketplace.address
+    assert nft_contract.ownerOf(nft_id) == alice.address
+    assert nft_contract.ownerOf(nft_id) != marketplace.address
 
 
 # FAIL		Remove not owned NFT from sale (NFT is in sale)
 # 		Check seller NFT balance
-def test_invalid_remove_offer(marketplace, nft721, alice, bob):
-    token_id = 1
+def test_invalid_remove_offer(marketplace, nft_contract, alice, bob):
+    nft_id = 1
     price = 1
 
-    sale = marketplace.createSimpleOffer(nft721, token_id, price, {"from": alice})
+    sale = marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
     with reverts("You are not the creator of this sale"):
         marketplace.removeSimpleOffer(sale.return_value, {"from": bob})
 
-    assert nft721.ownerOf(token_id) != alice.address
-    assert nft721.ownerOf(token_id) != bob.address
-    assert nft721.ownerOf(token_id) == marketplace.address
+    assert nft_contract.ownerOf(nft_id) != alice.address
+    assert nft_contract.ownerOf(nft_id) != bob.address
+    assert nft_contract.ownerOf(nft_id) == marketplace.address
 
 
 # SUCCESS	Update NFT for sale
-def test_update_sale(marketplace, nft721, alice):
-    token_id = 1
+def test_update_sale(marketplace, nft_contract, alice):
+    nft_id = 1
     price = 5
     new_price = 50
 
-    assert nft721.ownerOf(token_id) == alice.address
-    sale = marketplace.createSimpleOffer(nft721, token_id, price, {"from": alice})
-    assert nft721.ownerOf(token_id) != alice.address
-    assert nft721.ownerOf(token_id) == marketplace.address
+    assert nft_contract.ownerOf(nft_id) == alice.address
+    sale = marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
+    assert nft_contract.ownerOf(nft_id) != alice.address
+    assert nft_contract.ownerOf(nft_id) == marketplace.address
 
     marketplace.updateSimpleOffer(sale.return_value, new_price, {"from": alice})
 
 
-###		Auction
-# SUCCESS	Place NFT for auction x 2
-# 		Check all data + owner and contract balance
-# FAIL		Place NFT you don't own in auction
-# 		Check balances
-# FAIL		Bid on sale that hasn't started
-# FAIL		Bid lower than current price
-# SUCCESS	Bid on sale x2
-# 		Check highest bid is correct
-# 		Check balances between each bid
-# SUCCESS	Check end of auction (succeeded)
-#		Check balance of contract , buyer
-# SUCCESS	Check end of auction (succeeded)
-#		Check balance of contract , buyer, seller
+def test_invalid_update_sale(marketplace, nft_contract, alice, bob):
+    nft_id = 1
+    price = 5
+    new_price = 50
 
-###		Passive
-# SUCCESS	List NFT
-#		Check buyer balance
-# FAIL		List NFT already on sale
-# FAIL		List own NFT (why would anyone do this though ?)
-# SUCCESS	Accept offer
-#		Check balances and NFT owner
-# SUCCESS	Reject offer
-#		Chck balances and NFT owner
-# FAIL 		Accept inexistant offer
-# FAIL 		Reject inexistant offer
+    assert nft_contract.ownerOf(nft_id) == alice.address
+    sale = marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
+    assert nft_contract.ownerOf(nft_id) != alice.address
+    assert nft_contract.ownerOf(nft_id) == marketplace.address
 
-### Safety tests ?
-# Don't know about those, research ?
+    with reverts("You are not the creator of this sale"):
+        marketplace.updateSimpleOffer(sale.return_value, new_price, {"from": bob})
