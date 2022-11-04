@@ -45,11 +45,15 @@ def test_invalid_sale(marketplace, nft721, alice):
 def test_buy_token(marketplace, nft721, alice, bob):
     token_id = 1
     price = 5
-    assert bob.balance() >= price
+    bobBalance = bob.balance()
+    assert bobBalance >= price
 
     setAra(marketplace, nft721)
     s = marketplace.createSimpleOffer(nft721, token_id, price, {"from": alice})
     marketplace.buySimpleOffer(s.return_value, {"from": bob, "value": price})
+
+    assert bob.balance() == bobBalance - price
+    assert nft721.ownerOf(token_id) == bob.address
 
 
 # FAIL		Remove bought NFT from sale
@@ -92,3 +96,34 @@ def test_update_sale(marketplace, nft721, alice):
     assert nft721.ownerOf(token_id) == marketplace.address
 
     marketplace.updateSimpleOffer(sale.return_value, new_price, {"from": alice})
+
+
+###		Auction
+# SUCCESS	Place NFT for auction x 2
+# 		Check all data + owner and contract balance
+# FAIL		Place NFT you don't own in auction
+# 		Check balances
+# FAIL		Bid on sale that hasn't started
+# FAIL		Bid lower than current price
+# SUCCESS	Bid on sale x2
+# 		Check highest bid is correct
+# 		Check balances between each bid
+# SUCCESS	Check end of auction (succeeded)
+#		Check balance of contract , buyer
+# SUCCESS	Check end of auction (succeeded)
+#		Check balance of contract , buyer, seller
+
+###		Passive
+# SUCCESS	List NFT
+#		Check buyer balance
+# FAIL		List NFT already on sale
+# FAIL		List own NFT (why would anyone do this though ?)
+# SUCCESS	Accept offer
+#		Check balances and NFT owner
+# SUCCESS	Reject offer
+#		Chck balances and NFT owner
+# FAIL 		Accept inexistant offer
+# FAIL 		Reject inexistant offer
+
+### Safety tests ?
+# Don't know about those, research ?
