@@ -166,7 +166,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
      */
 	function createAuction (address nftContract, uint256 nftId, uint256 price, uint256 startTime, uint256 duration) external returns (uint256) {
 		// expecting time between when user submits to time when transaction is ran to be different
-		require(startTime + 60 >= block.timestamp, "Duration must be greater than 0");
+		require(startTime + duration >= block.timestamp, "Duration must be greater than 0");
 
 		ERC721 nft = ERC721(nftContract);
 
@@ -185,7 +185,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
 	function bidAuction(uint256 auctionId) external payable {
 		require (_auctions[auctionId].data.owner != address(0x0), "Auction does not exist or has ended");
 		require(block.timestamp < (_auctions[auctionId].startTime + _auctions[auctionId].duration), "Auction has not started");
-		require(msg.value > _auctions[auctionId].bid);
+		require(msg.value > _auctions[auctionId].bid, "New bid should be higher than current one.");
 
 		if (_auctions[auctionId].bidder != address(0x0))
 			payable(_auctions[auctionId].bidder).transfer(_auctions[auctionId].bid);
@@ -203,7 +203,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
      */
 	function redeemAuction(uint256 auctionId) external {
 		require (_auctions[auctionId].data.owner != address(0x0), "Auction does not exist or has ended");
-		require(block.timestamp > (_auctions[auctionId].startTime + _auctions[auctionId].duration), "Auction still in progress");
+		require(block.timestamp < (_auctions[auctionId].startTime + _auctions[auctionId].duration), "Auction still in progress");
 		require(msg.sender == _auctions[auctionId].bidder, "Only highest bidder can redeem NFT");
 		require(_auctions[auctionId].bid >= _auctions[auctionId].data.price, "Highest bid is lower than asking price");
 
@@ -236,7 +236,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
 
 
 		_offerId++;
-		return _offerId;
+		return _offerId - 1;
 	}
 
 	/**
@@ -267,7 +267,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
 		ERC721 nft = ERC721(_offer[_offerId].data.contractAddress);
 		ERC20 ARA = ERC20(araToken);
 
-		address owner =  nft.ownerOf(_offer[_offerId].data.id);
+		address owner = nft.ownerOf(_offer[_offerId].data.id);
 
 		require(msg.sender == owner, "Only nft owner can accept offer");
 
