@@ -1,7 +1,7 @@
 import datetime
 
 import pytest
-from brownie import accounts, reverts
+from brownie import accounts, reverts, chain
 
 
 @pytest.fixture(autouse=True)
@@ -15,36 +15,34 @@ def setAra(marketplace, nft):
 
 def test_create_auction(marketplace, nft_contract, alice, bob):
     nft_id, price, duration = 1, 1, 100
-    start_time = int(datetime.datetime.now().timestamp())
+    start_time = chain.time()
 
     assert nft_contract.ownerOf(nft_id) == alice.address
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
-    assert nft_contract.ownerOf(nft_id) != alice.address
     assert nft_contract.ownerOf(nft_id) == marketplace.address
+    assert(start_time == chain.time())
     marketplace.bidAuction(auction.return_value, {"from": bob, "value": price})
 
 
 def test_invalid_create_auction(marketplace, nft_contract, alice, bob):
     nft_id, price, duration = 2, 1, 100
-    start_time = int(datetime.datetime.now().timestamp())
+    start_time = chain.time()
 
     assert nft_contract.ownerOf(nft_id) == bob.address
-    assert nft_contract.ownerOf(nft_id) != alice.address
 
     with reverts("ERC721: transfer of token that is not own"):
         marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
 
-    assert nft_contract.ownerOf(nft_id) != alice.address
-    assert nft_contract.ownerOf(nft_id) != marketplace.address
     assert nft_contract.ownerOf(nft_id) == bob.address
 
+# Probably not a usuful test, there's not really a problem with starting an auction in the past
 
-def test_invalid_date_auction(marketplace, nft_contract, alice, bob):
-    nft_id, price, duration = 1, 1, 100
-    start_time = int((datetime.datetime.now() - datetime.timedelta(days=1)).timestamp())
+# def test_invalid_date_auction(marketplace, nft_contract, alice, bob):
+#     nft_id, price, duration = 1, 1, 100
+#     start_time = int((datetime.datetime.now() - datetime.timedelta(days=1)).timestamp())
 
-    with reverts("Duration must be greater than 0"):
-        marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
+#     with reverts("Duration must be greater than 0"):
+#         marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
 
 
 def test_invalid_auction_bid(marketplace):
@@ -56,11 +54,13 @@ def test_invalid_auction_bid(marketplace):
 
 def test_invalid_bid_auction(marketplace, nft_contract, alice, bob):
     nft_id, price, duration = 1, 1, 100
-    start_time = int(datetime.datetime.now().timestamp())
+    start_time = chain.time()
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
 
     bob_balance = bob.balance()
     market_balance = marketplace.balance()
+    with reverts("Auction does not exist or has ended"):
+        marketplace.bidAuction(42, {"from": bob, "value": price - 1})
     with reverts("New bid should be higher than current one."):
         marketplace.bidAuction(auction.return_value, {"from": bob, "value": price - 1})
     assert bob_balance == bob.balance()
@@ -70,15 +70,16 @@ def test_invalid_bid_auction(marketplace, nft_contract, alice, bob):
 # TODO: Should fail!
 def test_bid_future_auction(marketplace, nft_contract, alice, bob):
     nft_id, price, duration = 1, 1, 100
-    start_time = int((datetime.datetime.now() + datetime.timedelta(hours=2)).timestamp())
+    start_time = chain.time() + 7200  #7200 is 2 hours in seconds
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
     with reverts("Auction has not started"):
         marketplace.bidAuction(auction.return_value, {"from": bob, "value": price})
+    # v = marketplace.bidAuction(auction.return_value, {"from": bob, "value": price})
 
 
 def test_bid_auction(marketplace, nft_contract, alice, bob, carol):
     nft_id, price, duration = 1, 1, 100
-    start_time = int(datetime.datetime.now().timestamp())
+    start_time = chain.time()
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
 
     bob_balance = bob.balance()
@@ -94,7 +95,7 @@ def test_bid_auction(marketplace, nft_contract, alice, bob, carol):
 
 def test_redeem_auction(marketplace, nft_contract, alice, bob):
     nft_id, price, duration = 1, 1, 10
-    start_time = int(datetime.datetime.now().timestamp())
+    start_time = chain.time()
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
     alice_balance = alice.balance()
 
@@ -115,7 +116,7 @@ def test_redeem_auction(marketplace, nft_contract, alice, bob):
 
 def test_redeem_auction_lower_bid(marketplace, nft_contract, alice, bob, carol):
     nft_id, price, duration = 1, 2, 10
-    start_time = int(datetime.datetime.now().timestamp())
+    start_time = chain.time()
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
     bob_balance = bob.balance()
     carol_balance = carol.balance()
@@ -136,7 +137,7 @@ def test_redeem_auction_lower_bid(marketplace, nft_contract, alice, bob, carol):
 
 def test_redeem_auction_lower_price(marketplace, nft_contract, alice, bob):
     nft_id, price, duration = 1, 2, 10
-    start_time = int(datetime.datetime.now().timestamp())
+    start_time = chain.time()
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
     setAra(marketplace, nft_contract)
 
