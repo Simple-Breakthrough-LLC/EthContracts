@@ -20,7 +20,6 @@ def test_create_auction(marketplace, nft_contract, alice, bob):
     assert nft_contract.ownerOf(nft_id) == alice.address
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
     assert nft_contract.ownerOf(nft_id) == marketplace.address
-    assert(start_time == chain.time())
     marketplace.bidAuction(auction.return_value, {"from": bob, "value": price})
 
 
@@ -74,7 +73,6 @@ def test_bid_future_auction(marketplace, nft_contract, alice, bob):
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
     with reverts("Auction has not started"):
         marketplace.bidAuction(auction.return_value, {"from": bob, "value": price})
-    # v = marketplace.bidAuction(auction.return_value, {"from": bob, "value": price})
 
 
 def test_bid_auction(marketplace, nft_contract, alice, bob, carol):

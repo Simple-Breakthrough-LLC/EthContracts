@@ -182,7 +182,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
      * @dev Bids on an auction. If the bid is higher than the current bid, refund the previoud bidder, and place the current bid in escrow
      * @param  auctionId Auction to bid on
      */
-	function bidAuction(uint256 auctionId) external payable  returns (uint256, uint256, uint256) {
+	function bidAuction(uint256 auctionId) external payable  {
 		require (_auctions[auctionId].data.owner != address(0x0), "Auction does not exist or has ended");
 		require(block.timestamp >= (_auctions[auctionId].startTime), "Auction has not started");
 		require(block.timestamp < (_auctions[auctionId].startTime + _auctions[auctionId].duration), "Auction has ended");
@@ -193,8 +193,6 @@ contract MarketPlace is Ownable, IERC721Receiver {
 
 		_auctions[auctionId].bid = msg.value;
 		_auctions[auctionId].bidder = msg.sender;
-
-		return (block.timestamp, _auctions[auctionId].startTime, _auctions[auctionId].duration);
 	}
 
 	/**
@@ -249,12 +247,12 @@ contract MarketPlace is Ownable, IERC721Receiver {
 	function rejectOffer(uint256 offerId)	external {
 		require (_offer[offerId].data.owner != address(0x0), "Offer does not exist or has ended");
 
-		ERC721 nft = ERC721(_offer[_offerId].data.contractAddress);
+		ERC721 nft = ERC721(_offer[offerId].data.contractAddress);
 
-		require(msg.sender == nft.ownerOf(_offer[_offerId].data.id), "Only nft owner can cancel offer");
-		payable(_offer[_offerId].buyer).transfer(_offer[_offerId].data.price);
+		require(msg.sender == nft.ownerOf(_offer[offerId].data.id), "Only nft owner can cancel offer");
+		payable(_offer[offerId].buyer).transfer(_offer[offerId].data.price);
 
-		delete _offer[_offerId];
+		delete _offer[offerId];
 	}
 
 	/**
@@ -267,10 +265,10 @@ contract MarketPlace is Ownable, IERC721Receiver {
 	function acceptOffer(uint256 offerId) external {
 		require (_offer[offerId].data.owner != address(0x0), "Offer does not exist or has ended");
 
-		ERC721 nft = ERC721(_offer[_offerId].data.contractAddress);
+		ERC721 nft = ERC721(_offer[offerId].data.contractAddress);
 		ERC20 ARA = ERC20(araToken);
 
-		address owner = nft.ownerOf(_offer[_offerId].data.id);
+		address owner = nft.ownerOf(_offer[offerId].data.id);
 
 		require(msg.sender == owner, "Only nft owner can accept offer");
 
@@ -279,10 +277,10 @@ contract MarketPlace is Ownable, IERC721Receiver {
 		else
 			_offer[offerId].data.owner.transfer(_offer[offerId].data.price);
 
-		payable(owner).transfer(_offer[_offerId].data.price);
-		nft.safeTransferFrom(owner, _offer[_offerId].buyer, _offer[_offerId].data.id);
+		// payable(owner).transfer(_offer[offerId].data.price);
+		// nft.safeTransferFrom(owner, _offer[offerId].buyer, _offer[offerId].data.id);
 
-		delete _offer[_offerId];
+		// delete _offer[offerId];
 	}
 
 
@@ -293,9 +291,9 @@ contract MarketPlace is Ownable, IERC721Receiver {
 	function cancelOffer(uint256 offerId) external {
 		require (_offer[offerId].data.owner != address(0x0), "Offer does not exist or has ended");
 
-		require(msg.sender == _offer[_offerId].buyer, "Only offer creator can cancel offer");
-		payable(msg.sender).transfer(_offer[_offerId].data.price);
+		require(msg.sender == _offer[offerId].buyer, "Only offer creator can cancel offer");
+		payable(msg.sender).transfer(_offer[offerId].data.price);
 
-		delete _offer[_offerId];
+		delete _offer[offerId];
 	}
 }

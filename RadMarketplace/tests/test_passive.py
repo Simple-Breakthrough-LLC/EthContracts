@@ -19,11 +19,12 @@ def test_passive_offer(marketplace, nft_contract, bob):
     market_balance = marketplace.balance()
 
     assert bob_balance >= price
-    offer = marketplace.createPassiveOffer(nft_contract, nft_id, price, {"from": bob, "value": price})
+    offer = marketplace.createPassiveOffer(nft_contract.address, nft_id, price, {"from": bob, "value": price})
     assert bob.balance() == bob_balance - price
     assert marketplace.balance() == market_balance + price
 
-    marketplace.cancelOffer(offer.return_value, {"from": bob})
+    v = marketplace.cancelOffer(offer.return_value, {"from": bob})
+    # assert v.return_value == bob.address
 
 
 def test_invalid_passive_offer(marketplace, nft_contract, bob):
@@ -57,6 +58,7 @@ def test_accept_offer(marketplace, nft_contract, bob, alice):
     nft_id = 1
     price = 1
 
+    setAra(marketplace, nft_contract)
     offer = marketplace.createPassiveOffer(nft_contract, nft_id, price, {"from": bob, "value": price})
 
     marketplace.acceptOffer(offer.return_value, {"from": alice})
