@@ -16,8 +16,7 @@ def setAra(marketplace, nft):
 # 		Check user balance
 # 		Check receiver balance
 def test_sale(marketplace, nft_contract, alice):
-    nft_id = 1
-    price = 5
+    nft_id, price = 1, 1
 
     assert nft_contract.ownerOf(nft_id) == alice.address
 
@@ -30,11 +29,10 @@ def test_sale(marketplace, nft_contract, alice):
 # FAIl		NFT you don't own for sale
 # 		Check user balance
 def test_invalid_sale(marketplace, nft_contract, alice):
-    nft_id = 2
-    price = 5
+    nft_id, price = 2, 1
 
     assert nft_contract.ownerOf(nft_id) != alice.address
-    with reverts("ERC721: transfer of token that is not own"):
+    with reverts("ERC721: transfer from incorrect owner"):
         marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
     assert nft_contract.ownerOf(nft_id) != marketplace.address
 

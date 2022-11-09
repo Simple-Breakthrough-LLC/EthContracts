@@ -104,6 +104,7 @@ def test_reject_other_offer(marketplace, nft_contract, bob, alice):
     assert marketplace.balance() == market_balance + price
     assert nft_contract.ownerOf(nft_id) == alice
 
+
 def test_reject_invalid_offer(marketplace, nft_contract, bob, alice):
     nft_id, price = 1, 1
 
@@ -123,13 +124,13 @@ def test_cancel_offer(marketplace, nft_contract, bob):
     assert bob.balance() == bob_balance - price
     assert marketplace.balance() == market_balance + price
 
-
     marketplace.cancelOffer(offer.return_value, {"from": bob})
     with reverts("Offer does not exist or has ended"):
         marketplace.cancelOffer(offer.return_value, {"from": bob})
 
     assert bob.balance() == bob_balance
     assert marketplace.balance() == market_balance
+
 
 def test_cancel_others_offer(marketplace, nft_contract, bob, carol):
     nft_id, price = 1, 1
@@ -138,6 +139,7 @@ def test_cancel_others_offer(marketplace, nft_contract, bob, carol):
 
     with reverts("Only offer creator can cancel offer"):
         marketplace.cancelOffer(offer.return_value, {"from": carol})
+
 
 def test_cancel_invalid_offer(marketplace, nft_contract, bob):
     nft_id, price = 1, 1
