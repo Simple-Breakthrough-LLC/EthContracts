@@ -31,7 +31,12 @@ def test_create_auction(marketplace, nft_contract, alice, bob):
 
     assert nft_contract.ownerOf(nft_id) == marketplace.address
     bid = marketplace.bidAuction(1, {"from": bob, "value": price})
-    print(f"bid_time = {bid.return_value}")
+    auction_start, dur = bid.return_value
+    # print(f"bid_time = {bid.return_value}")
+    print(f"Auction_start = {auction_start}")
+    print(f"Auction dur = {dur}")
+    # print(f"block.timestamp = {ts}")
+    # assert(1 == 2)
 
 
 # def test_invalid_create_auction(marketplace, nft_contract, alice, bob):

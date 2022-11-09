@@ -184,11 +184,11 @@ contract MarketPlace is Ownable, IERC721Receiver {
      * @dev Bids on an auction. If the bid is higher than the current bid, refund the previoud bidder, and place the current bid in escrow
      * @param  auctionId Auction to bid on
      */
-	function bidAuction(uint256 auctionId) external payable returns (uint256) {
-		require (_auctions[auctionId].data.owner != address(0x0), "Auction does not exist or has ended");
-		require(_auctions[auctionId].startTime > block.timestamp, "Auction has not started");
-		require(block.timestamp >= (_auctions[auctionId].startTime + _auctions[auctionId].duration), "Auction has ended");
-		require(msg.value > _auctions[auctionId].bid, "New bid should be higher than current one.");
+	function bidAuction(uint256 auctionId) external payable returns (bool, uint256) {
+		// require (_auctions[auctionId].data.owner != address(0x0), "Auction does not exist or has ended");
+		require(_auctions[auctionId].startTime < block.timestamp, "Auction has not started");
+		// require(block.timestamp <= (_auctions[auctionId].startTime + _auctions[auctionId].duration), "Auction has ended");
+		// require(msg.value > _auctions[auctionId].bid, "New bid should be higher than current one.");
 
 		if (_auctions[auctionId].bidder != address(0x0))
 			payable(_auctions[auctionId].bidder).transfer(_auctions[auctionId].bid);
@@ -196,7 +196,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
 		_auctions[auctionId].bid = msg.value;
 		_auctions[auctionId].bidder = msg.sender;
 
-		return block.timestamp;
+		return ( _auctions[auctionId].startTime > block.timestamp, _auctions[auctionId].duration);
 	}
 
 	/**
