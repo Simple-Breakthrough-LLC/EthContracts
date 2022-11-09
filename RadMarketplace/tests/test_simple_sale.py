@@ -78,11 +78,9 @@ def test_invalid_buy_token(marketplace, nft_contract, alice, bob):
 
 
 def test_invalid_value_buy(marketplace, nft_contract, alice, bob):
-    nft_id = 1
-    price = 5
+    nft_id, price = 1, 1
     bob_balance = bob.balance()
     alice_balance = alice.balance()
-    assert bob_balance >= price
 
     setAra(marketplace, nft_contract)
     sale = marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})

@@ -88,6 +88,33 @@ contract MarketPlace is Ownable, IERC721Receiver {
 		return IERC721Receiver.onERC721Received.selector;
 	}
 
+
+	function completeSale(sale calldata data, address buyer) internal {
+		ERC721 nft = ERC721(data.contractAddress);
+		ERC20 ARA = ERC20(araToken);
+		address royaltyRecipient;
+		uint256 amount;
+
+		uint256 price = data.price;
+
+		if (nft.supportsInterface(type(IERC2981).interfaceId))
+		{
+			(royaltyRecipient, amount) = nft.royaltyInfo(data.id, price);
+			payable(royaltyRecipient).transfer(amount);
+			// require(amount < msg.value); This to prevent royalties from draining funds ?
+
+			price -= amount;
+		}
+
+
+		if (ARA.balanceOf(data.owner) < waiver)
+			data.owner.transfer(price - ((data.price * marketPlaceFee) / 100));
+		else
+			data.owner.transfer(price);
+
+		nft.safeTransferFrom(address(this), buyer, data.id);
+
+	}
 	/**
      * @dev Put up an NFT for sale at a fixed price. Nft will move into escrow
      * @param nftContract The token contract
@@ -137,21 +164,15 @@ contract MarketPlace is Ownable, IERC721Receiver {
 	 * the adjusted payment will be trasferred to the seller;
      * @param saleId The sale to buy
      */
+
+
 	function buySimpleOffer (uint256 saleId) external payable{
 
 		require(_sales[saleId].contractAddress != address(0x0), "This sale does not exist or has ended");
 		require(msg.value == _sales[saleId].price, "Insufficient funds");
 
-		// Transfer money to seller, need to see whats up with market fee
-		ERC721 nft = ERC721(_sales[saleId].contractAddress);
-		ERC20 ARA = ERC20(araToken);
+		completeSale(_sales[saleId].data, msg.sender);
 
-		if (ARA.balanceOf(_sales[saleId].owner) < waiver)
-			_sales[saleId].owner.transfer(_sales[saleId].price - ((_sales[saleId].price * marketPlaceFee) / 100));
-		else
-			_sales[saleId].owner.transfer(_sales[saleId].price);
-
-		nft.safeTransferFrom(address(this), msg.sender, _sales[saleId].id);
 
 		delete _sales[saleId];
 	}
@@ -165,7 +186,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
      * @param  startTime The starting time of the auction (in epoch time)
      * @param  duration The duration of the sale (in seconds)
      */
-	function createAuction (address nftContract, uint256 nftId, uint256 price, uint256 startTime, uint256 duration) external returns (uint256, uint256, uint256) {
+	function createAuction (address nftContract, uint256 nftId, uint256 price, uint256 startTime, uint256 duration) external {
 		// expecting time between when user submits to time when transaction is ran to be different
 		// require(startTime + >= block.timestamp, "Duration must be greater than 0");
 
@@ -176,15 +197,14 @@ contract MarketPlace is Ownable, IERC721Receiver {
 
 
 		_auctionId++;
-		// return _auctionId - 1;
-		return (_auctions[_auctionId-1].startTime, _auctions[_auctionId-1].duration, block.timestamp);
+		return _auctionId - 1;
 	}
 
 	/**
      * @dev Bids on an auction. If the bid is higher than the current bid, refund the previoud bidder, and place the current bid in escrow
      * @param  auctionId Auction to bid on
      */
-	function bidAuction(uint256 auctionId) external payable returns (bool, uint256) {
+	function bidAuction(uint256 auctionId) external payable {
 		// require (_auctions[auctionId].data.owner != address(0x0), "Auction does not exist or has ended");
 		require(_auctions[auctionId].startTime < block.timestamp, "Auction has not started");
 		// require(block.timestamp <= (_auctions[auctionId].startTime + _auctions[auctionId].duration), "Auction has ended");
@@ -196,7 +216,6 @@ contract MarketPlace is Ownable, IERC721Receiver {
 		_auctions[auctionId].bid = msg.value;
 		_auctions[auctionId].bidder = msg.sender;
 
-		return ( _auctions[auctionId].startTime > block.timestamp, _auctions[auctionId].duration);
 	}
 
 	/**
@@ -206,26 +225,16 @@ contract MarketPlace is Ownable, IERC721Receiver {
 	 * the adjusted payment will be trasferred to the seller;
      * @param  auctionId Auction to bid on
      */
-	function redeemAuction(uint256 auctionId) external returns (uint256) {
+	function redeemAuction(uint256 auctionId) external {
 		require (_auctions[auctionId].data.owner != address(0x0), "Auction does not exist or has ended");
 		require(block.timestamp < (_auctions[auctionId].startTime + _auctions[auctionId].duration), "Auction still in progress");
 		require(msg.sender == _auctions[auctionId].bidder, "Only highest bidder can redeem NFT");
 		require(_auctions[auctionId].bid >= _auctions[auctionId].data.price, "Highest bid is lower than asking price");
 
-		ERC721 nft = ERC721(_auctions[auctionId].data.contractAddress);
-		ERC20 ARA = ERC20(araToken);
+		_auctions[auctionId].price = _auctions[auctionId].bid;
+		completeSale(_auctions[auctionId].data, _auctions[auctionId].bidder);
 
-		nft.transferFrom(address(this), msg.sender, _auctions[auctionId].data.id);
-
-
-		if (ARA.balanceOf(_auctions[auctionId].data.owner) < waiver)
-			_auctions[auctionId].data.owner.transfer(_auctions[auctionId].bid - ((_auctions[auctionId].bid * marketPlaceFee) / 100));
-		else
-			_auctions[auctionId].data.owner.transfer(_auctions[auctionId].bid);
-
-		// delete _auctions[auctionId];
-		// return _auctions[auctionId].duration;
-		return block.timestamp;
+		delete _auctions[auctionId];
 	}
 
 	/**
@@ -278,15 +287,10 @@ contract MarketPlace is Ownable, IERC721Receiver {
 
 		require(msg.sender == owner, "Only nft owner can accept offer");
 
-		if (ARA.balanceOf(_offer[offerId].data.owner) < waiver)
-			_offer[offerId].data.owner.transfer(_offer[offerId].data.price - ((_offer[offerId].data.price * marketPlaceFee) / 100));
-		else
-			_offer[offerId].data.owner.transfer(_offer[offerId].data.price);
+		_offer[offerId].owner = owner;
 
-		// payable(owner).transfer(_offer[offerId].data.price);
-		// nft.safeTransferFrom(owner, _offer[offerId].buyer, _offer[offerId].data.id);
-
-		// delete _offer[offerId];
+		completeSale(_offer[offerId].data, _offer[offerId].buyer);
+		delete _offer[offerId];
 	}
 
 
