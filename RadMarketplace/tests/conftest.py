@@ -1,5 +1,5 @@
 import pytest
-from brownie import GenericERC721, GenericERC20, MarketPlace, accounts
+from brownie import GenericERC20, GenericERC721, MarketPlace, accounts
 
 
 @pytest.fixture(scope="module")
@@ -21,6 +21,7 @@ def bob():
 def carol():
     return accounts[3]
 
+
 @pytest.fixture(scope="module")
 def royaltyRecipient():
     return accounts[4]
@@ -38,16 +39,28 @@ def nft_contract(deployer, alice, bob, royaltyRecipient, marketplace):
     return contract
 
 
-
 @pytest.fixture(scope="module", autouse=True)
 def marketplace(deployer):
     market_fee = 1
     waiver = 10
     return deployer.deploy(MarketPlace, deployer.address, market_fee, waiver)
 
+
 @pytest.fixture(scope="module", autouse=True)
 def e20(deployer, alice, marketplace):
-	contract = deployer.deploy(GenericERC20)
-	contract.mint(alice, 10)
-	marketplace.setARA(contract.address)
-	return contract
+    contract = deployer.deploy(GenericERC20)
+    contract.mint(alice, 10)
+    marketplace.setARA(contract.address)
+    return contract
+
+
+def get_fees(id, price, market, nft, seller, ara):
+    marketFee = 0
+    _, royalties = nft.royaltyInfo(id, price)
+
+    if ara.balanceOf(seller) < market.waiver():
+        marketFee = (market.marketPlaceFee() * price) / 100
+
+    adjustedPrice = price - marketFee - royalties
+
+    return (adjustedPrice, marketFee, royalties)

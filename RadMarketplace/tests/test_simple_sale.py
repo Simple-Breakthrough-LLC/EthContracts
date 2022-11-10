@@ -1,22 +1,11 @@
 import pytest
-from brownie import accounts, reverts
+from brownie import reverts
+from conftest import get_fees
 
 
 @pytest.fixture(autouse=True)
 def isolation(fn_isolation):
     pass
-
-def get_fees(id, price, market, nft, seller, ara):
-    marketFee = 0
-    _, royalties = nft.royaltyInfo(id, price)
-
-    if (ara.balanceOf(seller) < market.waiver()):
-        marketFee = (market.marketPlaceFee() * price) / 100
-
-    adjustedPrice = price - marketFee - royalties
-
-    return (adjustedPrice, marketFee, royalties)
-
 
 
 ##		 Simple Sale

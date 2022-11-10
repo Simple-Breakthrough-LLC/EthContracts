@@ -1,8 +1,8 @@
-import datetime
 import time
 
 import pytest
-from brownie import accounts, chain, reverts
+from brownie import chain, reverts
+from conftest import get_fees
 
 
 @pytest.fixture(autouse=True)
@@ -95,26 +95,28 @@ def test_bid_auction(marketplace, nft_contract, alice, bob, carol):
         marketplace.bidAuction(auction.return_value, {"from": carol, "value": price})
 
 
-def test_redeem_auction(marketplace, nft_contract, alice, bob):
+def test_redeem_auction(marketplace, nft_contract, alice, bob, royaltyRecipient, e20):
     nft_id, price, duration = 1, 1, 2
     start_time = chain.time() - 1
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
     alice_balance = alice.balance()
     bob_balance = bob.balance()
+    market_balance = marketplace.balance()
+    royalty_balance = royaltyRecipient.balance()
 
     setAra(marketplace, nft_contract)
     marketplace.bidAuction(auction.return_value, {"from": bob, "value": price})
     assert bob.balance() == bob_balance - price
-    market_balance = marketplace.balance()
-
     assert nft_contract.ownerOf(nft_id) == marketplace
     assert nft_contract.ownerOf(nft_id) != bob
 
     time.sleep(duration)
     marketplace.redeemAuction(auction.return_value, {"from": bob})
+    adjustedPrice, marketFee, royalties = get_fees(nft_id, price, marketplace, nft_contract, alice, e20)
 
-    assert alice.balance() == alice_balance + price
-    assert marketplace.balance() == market_balance - price
+    assert alice.balance() == alice_balance + adjustedPrice
+    assert marketplace.balance() == market_balance + marketFee
+    assert royaltyRecipient.balance() == royalty_balance + royalties
     assert nft_contract.ownerOf(nft_id) != marketplace
     assert nft_contract.ownerOf(nft_id) == bob
 
@@ -183,19 +185,3 @@ def test_redeem_invalid_auction(marketplace, nft_contract, alice, bob):
 
     assert nft_contract.ownerOf(nft_id) == marketplace
     assert nft_contract.ownerOf(nft_id) != bob
-
-
-###		Auction
-# SUCCESS	Place NFT for auction x 2
-# 		Check all data + owner and contract balance
-# FAIL		Place NFT you don't own in auction
-# 		Check balances
-# FAIL		Bid on sale that hasn't started
-# FAIL		Bid lower than current price
-# SUCCESS	Bid on sale x2
-# 		Check highest bid is correct
-# 		Check balances between each bid
-# SUCCESS	Check end of auction (succeeded)
-# 		Check balance of contract , buyer
-# SUCCESS	Check end of auction (succeeded)
-# 		Check balance of contract , buyer, seller
