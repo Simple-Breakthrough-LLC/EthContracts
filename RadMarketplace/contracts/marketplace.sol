@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.3;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+// import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "./generic721.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 
 contract MarketPlace is Ownable, IERC721Receiver {
+	using Address for address payable;
+
     struct sale {
         address contractAddress;
         address payable owner;
@@ -31,8 +34,8 @@ contract MarketPlace is Ownable, IERC721Receiver {
     }
 
     address public araToken;
-    uint256 marketPlaceFee;
-    uint256 waiver;
+    uint256 public marketPlaceFee;
+    uint256 public  waiver;
 
     uint256 _salesId;
     uint256 _auctionId;
@@ -96,7 +99,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
 
     function completeSale(
         sale memory data,
-        address owner,
+        address holder,
         address buyer
     ) internal {
         GenericERC721 nft = GenericERC721(data.contractAddress);
@@ -106,19 +109,20 @@ contract MarketPlace is Ownable, IERC721Receiver {
 
         uint256 price = data.price;
 
+        nft.safeTransferFrom(holder, buyer, data.id);
+
         if (nft.supportsInterface(type(IERC2981).interfaceId)) {
-            (royaltyRecipient, amount) = nft.royaltyInfo(data.id, price);
-            payable(royaltyRecipient).transfer(amount);
-            // require(amount < msg.value); This to prevent royalties from draining funds ?
+			(royaltyRecipient, amount) = nft.royaltyInfo(data.id, price);
+            require(amount < price, "Royalties higher than selling price");
+            payable(royaltyRecipient).sendValue(amount);
 
             price -= amount;
         }
-
+		// return (royaltyRecipient, amount);
         if (ARA.balanceOf(data.owner) < waiver)
             data.owner.transfer(price - ((data.price * marketPlaceFee) / 100));
         else data.owner.transfer(price);
 
-        nft.safeTransferFrom(owner, buyer, data.id);
     }
 
     /**
@@ -185,9 +189,21 @@ contract MarketPlace is Ownable, IERC721Receiver {
             "This sale does not exist or has ended"
         );
         require(msg.value == _sales[saleId].price, "Insufficient funds");
-
+		// GenericERC721 nft = GenericERC721(_sales[saleId].contractAddress);
+        // ERC20 ARA = ERC20(araToken);
+		// address royaltyRecipient;
+        // uint256 amount;
         completeSale(_sales[saleId], address(this), msg.sender);
+		//  if (nft.supportsInterface(type(IERC2981).interfaceId)) {
+        //     (royaltyRecipient, amount) = nft.royaltyInfo(_sales[saleId].id, _sales[saleId].price);
+        //     // payable(royaltyRecipient).transfer(amount);
+        //     // require(amount < msg.value); This to prevent royalties from draining funds ?
 
+        // }
+		// address a;
+		// uint256 b;
+		// (a, b) = completeSale(_sales[saleId], address(this), msg.sender);
+		// return (royaltyRecipient, amount,a ,b );
         delete _sales[saleId];
     }
 
@@ -248,13 +264,15 @@ contract MarketPlace is Ownable, IERC721Receiver {
             "New bid should be higher than current one."
         );
 
-        if (_auctions[auctionId].bidder != address(0x0))
-            payable(_auctions[auctionId].bidder).transfer(
-                _auctions[auctionId].bid
-            );
+		address bidder = _auctions[auctionId].bidder;
+		uint256 amount = _auctions[auctionId].bid;
 
         _auctions[auctionId].bid = msg.value;
         _auctions[auctionId].bidder = msg.sender;
+
+        if (bidder != address(0x0))
+            payable(bidder).sendValue(amount);
+
     }
 
     /**
@@ -333,9 +351,11 @@ contract MarketPlace is Ownable, IERC721Receiver {
             msg.sender == nft.ownerOf(_offer[offerId].data.id),
             "Only nft owner can cancel offer"
         );
-        payable(_offer[offerId].buyer).transfer(_offer[offerId].data.price);
-
+		uint256 price = _offer[offerId].data.price;
         delete _offer[offerId];
+
+        payable(_offer[offerId].buyer).transfer(price);
+
     }
 
     /**
@@ -377,8 +397,10 @@ contract MarketPlace is Ownable, IERC721Receiver {
             msg.sender == _offer[offerId].buyer,
             "Only offer creator can cancel offer"
         );
-        payable(msg.sender).transfer(_offer[offerId].data.price);
-
+		uint256 price = _offer[offerId].data.price;
         delete _offer[offerId];
+
+        payable(msg.sender).sendValue(price);
+
     }
 }

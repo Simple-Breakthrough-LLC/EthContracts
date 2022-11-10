@@ -6,9 +6,17 @@ from brownie import accounts, reverts
 def isolation(fn_isolation):
     pass
 
+def get_fees(id, price, market, nft, seller, ara):
+    marketFee = 0
+    _, royalties = nft.royaltyInfo(id, price)
 
-def setAra(marketplace, nft):
-    marketplace.setARA(nft.address)
+    if (ara.balanceOf(seller) < market.waiver()):
+        marketFee = (market.marketPlaceFee() * price) / 100
+
+    adjustedPrice = price - marketFee - royalties
+
+    return (adjustedPrice, marketFee, royalties)
+
 
 
 ##		 Simple Sale
@@ -18,11 +26,8 @@ def setAra(marketplace, nft):
 def test_sale(marketplace, nft_contract, alice):
     nft_id, price = 1, 1
 
-    assert nft_contract.ownerOf(nft_id) == alice.address
-
     marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
 
-    assert nft_contract.ownerOf(nft_id) != alice.address
     assert nft_contract.ownerOf(nft_id) == marketplace.address
 
 
@@ -31,7 +36,6 @@ def test_sale(marketplace, nft_contract, alice):
 def test_invalid_sale(marketplace, nft_contract, alice):
     nft_id, price = 2, 1
 
-    assert nft_contract.ownerOf(nft_id) != alice.address
     with reverts("ERC721: transfer from incorrect owner"):
         marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
     assert nft_contract.ownerOf(nft_id) != marketplace.address
@@ -40,19 +44,25 @@ def test_invalid_sale(marketplace, nft_contract, alice):
 # SUCCESS	Buy token
 # 		Check buyer balance
 # 		Check seller balance
-def test_buy_token(marketplace, nft_contract, alice, bob):
+def test_buy_token(marketplace, nft_contract, alice, bob, royaltyRecipient, e20):
     nft_id = 1
     price = 5
     alice_balance = alice.balance()
     bob_balance = bob.balance()
+    market_balance = marketplace.balance()
+    royalty_balance = royaltyRecipient.balance()
+
     assert bob_balance >= price
 
-    setAra(marketplace, nft_contract)
     sale = marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
     marketplace.buySimpleOffer(sale.return_value, {"from": bob, "value": price})
 
+    adjustedPrice, marketFee, royalties = get_fees(nft_id, price, marketplace, nft_contract, alice, e20)
+
     assert bob.balance() == bob_balance - price
-    assert alice.balance() == alice_balance + price
+    assert alice.balance() == alice_balance + adjustedPrice
+    assert marketplace.balance() == market_balance + marketFee
+    assert royaltyRecipient.balance() == royalty_balance + royalties
     assert nft_contract.ownerOf(nft_id) == bob.address
 
 
@@ -64,7 +74,6 @@ def test_invalid_buy_token(marketplace, nft_contract, alice, bob):
     alice_balance = alice.balance()
     assert bob_balance >= price
 
-    setAra(marketplace, nft_contract)
     marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
     with reverts("This sale does not exist or has ended"):
         marketplace.buySimpleOffer(invalid_sale_id, {"from": bob, "value": price})
@@ -80,7 +89,6 @@ def test_invalid_value_buy(marketplace, nft_contract, alice, bob):
     bob_balance = bob.balance()
     alice_balance = alice.balance()
 
-    setAra(marketplace, nft_contract)
     sale = marketplace.createSimpleOffer(nft_contract, nft_id, price, {"from": alice})
     with reverts("Insufficient funds"):
         marketplace.buySimpleOffer(sale.return_value, {"from": bob, "value": price - 1})
