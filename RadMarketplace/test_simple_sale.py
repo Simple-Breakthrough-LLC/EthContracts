@@ -1,4 +1,5 @@
 import pytest
+import math
 from brownie import reverts
 from conftest import get_fees
 
@@ -33,12 +34,13 @@ def test_invalid_sale(marketplace, nft_contract, alice):
 # SUCCESS	Buy token
 # 		Check buyer balance
 # 		Check seller balance
-def test_buy_token(marketplace, nft_contract, alice, bob, royaltyRecipient, e20):
+def test_buy_token(marketplace, nft_contract, alice, bob, royaltyRecipient, e20, wallet):
     nft_id = 1
     price = 10
     alice_balance = alice.balance()
     bob_balance = bob.balance()
     market_balance = marketplace.balance()
+    wallet_balance = wallet.balance()
     royalty_balance = royaltyRecipient.balance()
 
     assert bob_balance >= price
@@ -49,8 +51,9 @@ def test_buy_token(marketplace, nft_contract, alice, bob, royaltyRecipient, e20)
     adjustedPrice, marketFee, royalties = get_fees(nft_id, price, marketplace, nft_contract, alice, e20)
 
     assert bob.balance() == bob_balance - price
-    assert alice.balance() == alice_balance + adjustedPrice
+    assert alice.balance() == alice_balance +  math.ceil(adjustedPrice)
     assert marketplace.balance() == market_balance + marketFee
+    assert wallet.balance() == wallet_balance + marketFee
     assert royaltyRecipient.balance() == royalty_balance + royalties
     assert nft_contract.ownerOf(nft_id) == bob.address
 

@@ -1,4 +1,5 @@
 import pytest
+import  math
 from brownie import reverts
 from conftest import get_fees
 
@@ -54,12 +55,14 @@ def test_reject_valid_offer(marketplace, nft_contract, bob, alice):
         marketplace.rejectOffer(offer.return_value, {"from": alice})
 
 
-def test_accept_offer(marketplace, nft_contract, bob, alice, royaltyRecipient, e20):
+def test_accept_offer(marketplace, nft_contract, bob, alice, royaltyRecipient, e20, wallet):
     nft_id, price = 1, 10
     alice_balance = alice.balance()
     bob_balance = bob.balance()
     market_balance = marketplace.balance()
     royalty_balance = royaltyRecipient.balance()
+    wallet_balance = wallet.balance()
+
 
     setAra(marketplace, nft_contract)
     offer = marketplace.createPassiveOffer(nft_contract, nft_id, price, {"from": bob, "value": price})
@@ -69,10 +72,10 @@ def test_accept_offer(marketplace, nft_contract, bob, alice, royaltyRecipient, e
     marketplace.acceptOffer(offer.return_value, {"from": alice})
     adjustedPrice, marketFee, royalties = get_fees(nft_id, price, marketplace, nft_contract, alice, e20)
     assert marketplace.balance() == market_balance + marketFee
+    assert wallet.balance() == wallet_balance + marketFee
     assert royaltyRecipient.balance() == royalty_balance + royalties
-    assert nft_contract.ownerOf(nft_id) != alice.address
     assert nft_contract.ownerOf(nft_id) == bob.address
-    assert alice.balance() == alice_balance + adjustedPrice
+    assert alice.balance() == alice_balance +  math.ceil(adjustedPrice)
 
 
 def test_accept_invalid_offer(marketplace, nft_contract, bob, alice):
