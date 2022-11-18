@@ -35,7 +35,7 @@ def test_invalid_sale(marketplace, nft_contract, alice):
 # 		Check seller balance
 def test_buy_token(marketplace, nft_contract, alice, bob, royaltyRecipient, e20):
     nft_id = 1
-    price = 5
+    price = 10
     alice_balance = alice.balance()
     bob_balance = bob.balance()
     market_balance = marketplace.balance()

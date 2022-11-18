@@ -39,6 +39,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
     uint256 _salesId;
     uint256 _auctionId;
     uint256 _offerId;
+	address wallet;
 
     mapping(uint256 => sale) internal _sales;
     mapping(uint256 => auction) internal _auctions;
@@ -52,6 +53,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
 
     constructor(
         address _ara,
+		address _wallet,
         uint256 _marketFee,
         uint256 _waiver
     ) {
@@ -61,6 +63,7 @@ contract MarketPlace is Ownable, IERC721Receiver {
         _auctionId = 1;
         _offerId = 1;
         waiver = _waiver;
+		wallet = _wallet;
     }
 
     function setARA(address _ara) external onlyOwner {
@@ -73,6 +76,10 @@ contract MarketPlace is Ownable, IERC721Receiver {
 
     function setWaiver(uint256 _waiver) external onlyOwner {
         waiver = _waiver;
+    }
+
+    function setWallet(address _wallet) external onlyOwner{
+        wallet = _wallet;
     }
 
     function getSimpleSale(uint256 saleId) external view returns (uint256) {
@@ -119,8 +126,12 @@ contract MarketPlace is Ownable, IERC721Receiver {
         }
 
         if (ARA.balanceOf(data.owner) < waiver)
-            data.owner.transfer(price - ((data.price * marketPlaceFee) / 100));
-        else data.owner.transfer(price);
+		{
+            data.owner.sendValue(price - ((data.price * marketPlaceFee) / 100));
+        	payable(wallet).sendValue((data.price * marketPlaceFee) / 100);
+		}
+        else
+            data.owner.sendValue(price);
     }
 
     /**
@@ -188,8 +199,10 @@ contract MarketPlace is Ownable, IERC721Receiver {
         );
         require(msg.value == _sales[saleId].price, "Insufficient funds");
 
-        completeSale(_sales[saleId], address(this), msg.sender);
+        sale memory data = _sales[saleId];
         delete _sales[saleId];
+
+        completeSale(data, address(this), msg.sender);
     }
 
     /**
@@ -283,14 +296,49 @@ contract MarketPlace is Ownable, IERC721Receiver {
         );
 
         _auctions[auctionId].data.price = _auctions[auctionId].bid;
+
+		sale memory data = _auctions[auctionId].data;
+        address bidder = _auctions[auctionId].bidder;
+        delete _auctions[auctionId];
+
         completeSale(
-            _auctions[auctionId].data,
+            data,
             address(this),
-            _auctions[auctionId].bidder
+            bidder
+        );
+    }
+
+	function endAuction(uint256 auctionId) external
+	{
+		require(
+            _auctions[auctionId].data.owner != address(0x0),
+            "Auction does not exist"
+        );
+		require(_auctions[auctionId].data.owner == msg.sender ||
+            _auctions[auctionId].bidder == msg.sender ||
+            owner() == msg.sender
+            , "Only nft owner, contract owner or bidder can end the auction");
+        require(
+            block.timestamp >=
+                (_auctions[auctionId].startTime +
+                    _auctions[auctionId].duration),
+            "Auction still in progress"
+        );
+        require(
+            _auctions[auctionId].bid < _auctions[auctionId].data.price,
+            "Cannot end auction whose bid has met the asking price"
         );
 
-        delete _auctions[auctionId];
-    }
+		ERC721 nft = ERC721(_auctions[auctionId].data.contractAddress);
+        uint256 bid = _auctions[auctionId].bid;
+        address bidder = _auctions[auctionId].bidder;
+
+		nft.transferFrom(address(this), _auctions[auctionId].data.owner, _auctions[auctionId].data.id);
+		delete _auctions[auctionId];
+
+		payable(bidder).sendValue(bid);
+
+	}
 
     /**
      * @dev User makes an offer to buy an nft. The funds are moved into escrow
@@ -310,7 +358,6 @@ contract MarketPlace is Ownable, IERC721Receiver {
             sale(nftContract, payable(nft.ownerOf(nftId)), nftId, price),
             msg.sender
         );
-
         _offerId++;
         return _offerId - 1;
     }
@@ -331,10 +378,13 @@ contract MarketPlace is Ownable, IERC721Receiver {
             msg.sender == nft.ownerOf(_offer[offerId].data.id),
             "Only nft owner can cancel offer"
         );
+
         uint256 price = _offer[offerId].data.price;
+        address buyer = _offer[offerId].buyer;
+
         delete _offer[offerId];
 
-        payable(_offer[offerId].buyer).transfer(price);
+        payable(buyer).sendValue(price);
     }
 
     /**
@@ -356,10 +406,13 @@ contract MarketPlace is Ownable, IERC721Receiver {
 
         require(msg.sender == owner, "Only nft owner can accept offer");
 
-        _offer[offerId].data.owner = payable(owner);
+        sale memory data =  _offer[offerId].data;
+        address buyer = _offer[offerId].buyer;
 
-        completeSale(_offer[offerId].data, msg.sender, _offer[offerId].buyer);
+        data.owner = payable(owner);
         delete _offer[offerId];
+
+        completeSale(data, owner, buyer);
     }
 
     /**

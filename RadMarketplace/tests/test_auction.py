@@ -1,6 +1,7 @@
 import time
 
 import pytest
+import math
 from brownie import chain, reverts
 from conftest import get_fees
 
@@ -9,9 +10,6 @@ from conftest import get_fees
 def isolation(fn_isolation):
     pass
 
-
-def setAra(marketplace, nft):
-    marketplace.setARA(nft.address)
 
 
 def test_create_auction(marketplace, nft_contract, alice, bob):
@@ -95,29 +93,28 @@ def test_bid_auction(marketplace, nft_contract, alice, bob, carol):
         marketplace.bidAuction(auction.return_value, {"from": carol, "value": price})
 
 
-def test_redeem_auction(marketplace, nft_contract, alice, bob, royaltyRecipient, e20):
-    nft_id, price, duration = 1, 1, 2
+def test_redeem_auction(marketplace, nft_contract, alice, bob, royaltyRecipient, e20, wallet):
+    nft_id, price, duration = 1, 10, 2
     start_time = chain.time() - 1
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
     alice_balance = alice.balance()
     bob_balance = bob.balance()
     market_balance = marketplace.balance()
+    wallet_balance = wallet.balance()
     royalty_balance = royaltyRecipient.balance()
 
-    setAra(marketplace, nft_contract)
     marketplace.bidAuction(auction.return_value, {"from": bob, "value": price})
     assert bob.balance() == bob_balance - price
     assert nft_contract.ownerOf(nft_id) == marketplace
-    assert nft_contract.ownerOf(nft_id) != bob
 
     time.sleep(duration)
     marketplace.redeemAuction(auction.return_value, {"from": bob})
     adjustedPrice, marketFee, royalties = get_fees(nft_id, price, marketplace, nft_contract, alice, e20)
-
-    assert alice.balance() == alice_balance + adjustedPrice
-    assert marketplace.balance() == market_balance + marketFee
+    print(f"original {price}, adjusted {adjustedPrice}, market fee {marketFee}, royalties {royalties}, alice balance {alice_balance}" )
+    assert alice.balance() == alice_balance +  math.ceil(adjustedPrice)
+    assert marketplace.balance() == market_balance
+    assert wallet.balance() == wallet_balance + marketFee
     assert royaltyRecipient.balance() == royalty_balance + royalties
-    assert nft_contract.ownerOf(nft_id) != marketplace
     assert nft_contract.ownerOf(nft_id) == bob
 
 
@@ -128,7 +125,6 @@ def test_redeem_auction_lower_bid(marketplace, nft_contract, alice, bob, carol):
     bob_balance = bob.balance()
     carol_balance = carol.balance()
 
-    setAra(marketplace, nft_contract)
     marketplace.bidAuction(auction.return_value, {"from": carol, "value": price - 1})
     marketplace.bidAuction(auction.return_value, {"from": bob, "value": price})
 
@@ -138,8 +134,6 @@ def test_redeem_auction_lower_bid(marketplace, nft_contract, alice, bob, carol):
 
     assert bob.balance() == bob_balance - price
     assert carol.balance() == carol_balance
-    assert nft_contract.ownerOf(nft_id) != bob
-    assert nft_contract.ownerOf(nft_id) != carol
     assert nft_contract.ownerOf(nft_id) == marketplace
 
 
@@ -147,7 +141,6 @@ def test_redeem_auction_lower_price(marketplace, nft_contract, alice, bob):
     nft_id, price, duration = 1, 2, 2
     start_time = chain.time()
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
-    setAra(marketplace, nft_contract)
 
     marketplace.bidAuction(auction.return_value, {"from": bob, "value": price - 1})
 
@@ -160,7 +153,6 @@ def test_redeem_ongoing_auction(marketplace, nft_contract, alice, bob):
     nft_id, price, duration = 1, 1, 3600
     start_time = chain.time() - 2600
     auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
-    setAra(marketplace, nft_contract)
 
     marketplace.bidAuction(auction.return_value, {"from": bob, "value": price + 1})
     marketplace_balance = marketplace.balance()
@@ -170,7 +162,6 @@ def test_redeem_ongoing_auction(marketplace, nft_contract, alice, bob):
 
     assert marketplace.balance() == marketplace_balance
     assert nft_contract.ownerOf(nft_id) == marketplace
-    assert nft_contract.ownerOf(nft_id) != bob
 
 
 def test_redeem_invalid_auction(marketplace, nft_contract, alice, bob):
@@ -178,10 +169,51 @@ def test_redeem_invalid_auction(marketplace, nft_contract, alice, bob):
     start_time = chain.time()
     marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
 
-    setAra(marketplace, nft_contract)
-
     with reverts("Auction does not exist or has ended"):
         marketplace.redeemAuction(123, {"from": bob})
 
     assert nft_contract.ownerOf(nft_id) == marketplace
-    assert nft_contract.ownerOf(nft_id) != bob
+
+def test_end_auction_fail(marketplace, nft_contract, alice, bob, carol):
+    nft_id, price, duration = 1, 10, 5
+    start_time = chain.time() - 1
+    auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
+    bob_balance = bob.balance()
+
+    marketplace.bidAuction(auction.return_value, {"from": bob, "value": price // 2})
+    assert bob.balance() == (bob_balance - (price // 2))
+    assert nft_contract.ownerOf(nft_id) == marketplace
+
+    with reverts("Auction does not exist"):
+        marketplace.endAuction(12)
+    with reverts("Auction still in progress"):
+        marketplace.endAuction(auction.return_value, {"from": alice})
+    with reverts("Only nft owner, contract owner or bidder can end the auction"):
+        marketplace.endAuction(auction.return_value, {"from": carol})
+
+    marketplace.bidAuction(auction.return_value, {"from": bob, "value": price})
+    assert bob.balance() == bob_balance - price
+
+    time.sleep(duration)
+
+    with reverts("Cannot end auction whose bid has met the asking price"):
+        marketplace.endAuction(auction.return_value, {"from": alice})
+
+
+
+
+def test_end_auction(marketplace, nft_contract, alice, bob):
+    nft_id, price, duration = 1, 10, 2
+    start_time = chain.time() - 1
+    auction = marketplace.createAuction(nft_contract, nft_id, price, start_time, duration, {"from": alice})
+    bob_balance = bob.balance()
+
+    marketplace.bidAuction(auction.return_value, {"from": bob, "value": price // 2})
+    assert bob.balance() == (bob_balance - (price // 2))
+    assert nft_contract.ownerOf(nft_id) == marketplace
+
+    time.sleep(duration)
+
+    marketplace.endAuction(auction.return_value, {"from": alice})
+    assert nft_contract.ownerOf(nft_id) == alice
+    assert bob.balance() == bob_balance

@@ -26,6 +26,10 @@ def carol():
 def royaltyRecipient():
     return accounts[4]
 
+@pytest.fixture(scope="module")
+def wallet():
+    return accounts[5]
+
 
 @pytest.fixture(scope="module", autouse=True)
 def nft_contract(deployer, alice, bob, royaltyRecipient, marketplace):
@@ -40,10 +44,11 @@ def nft_contract(deployer, alice, bob, royaltyRecipient, marketplace):
 
 
 @pytest.fixture(scope="module", autouse=True)
-def marketplace(deployer):
+def marketplace(deployer, wallet):
     market_fee = 1
-    waiver = 10
-    return deployer.deploy(MarketPlace, deployer.address, market_fee, waiver)
+    waiver = 11
+    contract = deployer.deploy(MarketPlace, deployer.address, wallet.address, market_fee, waiver)
+    return contract
 
 
 @pytest.fixture(scope="module", autouse=True)

@@ -55,7 +55,7 @@ def test_reject_valid_offer(marketplace, nft_contract, bob, alice):
 
 
 def test_accept_offer(marketplace, nft_contract, bob, alice, royaltyRecipient, e20):
-    nft_id, price = 1, 1
+    nft_id, price = 1, 10
     alice_balance = alice.balance()
     bob_balance = bob.balance()
     market_balance = marketplace.balance()
