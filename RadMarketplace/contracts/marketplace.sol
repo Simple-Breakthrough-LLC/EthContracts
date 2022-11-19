@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
 import "./generic721.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/token/common/ERC2981.sol";
+import "./IERC721Receiver.sol";
+import "./ERC20.sol";
+import "./Ownable.sol";
+import "./Address.sol";
+import "./ERC2981.sol";
 
 contract MarketPlace is Ownable, IERC721Receiver {
     using Address for address payable;
